@@ -1,0 +1,150 @@
+#!/bin/dash
+
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-status: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# check correct input
+if [ "$#" -ne 0 ]
+then
+    echo "usage: pushy-status"
+    exit 1
+fi
+
+filename=""
+# get all filename from working, index and commit directories
+for file in *
+do
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    filename="$file\n$filename"
+    # echo "file: $file"
+done
+
+for file in ".pushy/index/"*
+do
+    file=$(echo "$file" | cut -d'/' -f3)
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    filename="$file\n$filename"
+    # echo "file_idx: $file"
+done
+
+for file in ".pushy/commit/"*
+do
+    file=$(echo "$file" | cut -d'/' -f3)
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    filename="$file\n$filename"
+    # echo "file_commit: $file"
+done
+
+# filter uniq filename
+filename=$(echo "$filename" | sort | uniq | tail -n +2)
+
+# exit if no file exist
+if [ "$filename" = '' ]
+then
+    exit 0
+fi
+
+# list all file status
+echo "$filename" | while IFS= read -r file
+do
+    # file exist in working directory only
+    if [ -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+    then
+        echo "$file - untracked"
+        continue
+    fi
+
+    # file exist in index directory only
+    if [ ! -e "$file" ] && [ -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+    then
+        echo "$file - added to index, file deleted"
+        continue
+    fi
+
+    # file exist in commit directory only
+    if [ ! -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        echo "$file - file deleted, deleted from index"
+        continue
+    fi
+
+    # file exist in both working and commit directory
+    if [ -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        echo "$file - deleted from index"
+        continue
+    fi
+
+    # file exist in both working and index directory
+    if [ -e "$file" ] && [ -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+    then
+        # if file in index and working directory are different
+        if [ -n "$(diff "$file" ".pushy/index/$file")" ]
+        then
+        # vice versa
+            echo "$file - added to index, file changed"
+        else
+            echo "$file - added to index"
+        fi
+        continue
+    fi
+
+    # file exist in both commit and index directory
+    if [ ! -e "$file" ] && [ -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        # if file in index and commit directory are different
+        if [ -z "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ]
+        then
+            echo "$file - file deleted"
+        # vice versa
+        else
+            echo "$file - file deleted, changes staged for commit"
+        fi
+        continue
+    fi
+
+    # file exist in all three directories
+    if [ -e "$file" ] && [ -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        # if files are the same
+        if [ -z "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -z "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - same as repo"
+            continue
+        fi
+
+        # if file in index directory is the same as working file but not commit one
+        if [ -n "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -z "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - file changed, changes staged for commit"
+            continue
+        fi
+
+        # if file in index directory is the same as commit but not the working file
+        if [ -z "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -n "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - file changed, changes not staged for commit"
+            continue
+        fi
+
+        # if file in index directory is not the same as working and commit
+        if [ -n "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -n "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - file changed, different changes staged for commit"
+            continue
+        fi
+    fi
+    
+done

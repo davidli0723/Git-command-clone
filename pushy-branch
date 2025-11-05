@@ -1,0 +1,75 @@
+#!/bin/dash
+
+#check if pushy is initialized
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-branch: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+if [ "$#" -eq 0 ] && [ ! -e ".pushy/0" ]
+then
+    echo "pushy-branch: error: this command can not be run until after the first commit"
+    exit 1
+fi
+
+if [ "$#" -eq 0 ]
+then
+    cat ".pushy/branches_list" | sort
+    exit 0
+fi
+
+delete_flag=false
+
+
+if [ "$1" = '-d' ]
+then
+    delete_flag=true
+    shift
+fi
+
+branch="$1"
+
+if [ "$delete_flag" = false ]
+then
+    if [ "$branch" = 'master' ] || [ -e ".pushy/branch/$branch" ]
+    then 
+        echo "$0: error: branch '$branch' already exists"
+        exit 1
+    fi
+
+    mkdir ".pushy/branch/$branch"
+    echo "$branch" >> ".pushy/branches_list"
+    # echo "$branch"
+    for file in *
+    do
+        # echo "$file"
+        filename=$(basename "$file")
+        if [ "$filename" = '*' ]
+        then
+            continue
+        fi
+
+        cp "$file" ".pushy/branch/$branch"
+
+    done
+fi
+
+if [ "$delete_flag" = true ]
+then
+    if [ "$branch" = 'master' ]
+    then
+        echo "$0: error: can not delete branch '$branch': default branch"
+        exit 1
+    fi
+
+    if [ -e ".pushy/branch/$branch" ]
+    then
+        rm -r ".pushy/branch/$branch"
+        sed -i "/$branch/d" ".pushy/branches_list"
+        echo "Deleted branch '$branch'"
+    else
+        echo "$0: error: branch '$branch' doesn't exist"
+        exit 1
+    fi
+fi

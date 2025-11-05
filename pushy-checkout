@@ -1,0 +1,193 @@
+#!/bin/dash
+
+#check if pushy is initialized
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-checkout: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+if [ "$#" -ne 1 ]
+then
+    echo "usage: pushy-checkout <branch>"
+    exit 1
+fi
+
+branch=$(grep "$1" ".pushy/branches_list")
+# echo "$branch"
+if [ -z "$branch" ]
+then
+    echo "$0: error: unknown branch '$1'"
+    exit 1
+fi
+
+if [ -e ".pushy/branch/$branch" ] || [ "$branch" = 'master' ]
+then
+    prev_branch=$(cat ".pushy/current_branch")
+    prev_branch=".pushy/branch/$prev_branch"
+    echo "Switched to branch '$branch'"
+    echo "$branch" > ".pushy/current_branch"
+fi
+
+# for file in *
+# do
+#     if [ "$file" != "*" ]
+#     then
+#         cp "$file" "$prev_branch"
+#     fi
+# done
+
+# echo "ss"
+# rm *
+
+branch=".pushy/branch/$branch"
+
+commited_flag=true
+
+for file in *
+do
+    filename=$(basename "$file")
+    if [ "$filename" = "*" ]
+    then
+        continue
+    fi
+    if [ -e "$branch/$filename" ]
+    then
+        if [ -z "$(diff "$file" "$branch/$filename")" ]
+        then
+            # echo "no difference $file, $branch/$filename"
+            continue
+        fi
+
+        if [ -z "$(diff "$file" ".pushy/commit/$filename")" ]
+        then
+            continue
+        fi
+
+        # diff_change=$(diff "$branch/$filename" "$file" | head -n 1 | grep -E 'a')
+        if [ -n "$(diff "$branch/$filename" "$file" | head -n 1 | grep -E 'a')" ]
+        then
+            # echo "either no difference or append new content"
+            cp "$file" "$branch/"
+        else
+            #should return error , have conflict
+            if [ -z "$(diff "$file" "$prev_branch/$file")" ]
+            then
+                continue
+            fi
+            diff "$file" "$branch/$filename"
+            echo "$branch/$filename"
+            cat "$branch/$filename"
+            echo "$file"
+            cat "$file"
+            echo ".pushy/commit/$file"
+            cat ".pushy/commit/$file"
+            echo ".pushy/branch/master/$file"
+            cat ".pushy/branch/master/$file"
+            # echo "$file why"
+            :
+        fi
+    else
+        # echo "delete $file"
+        rm "$file"
+    fi
+done
+
+for file in "$branch/"*
+do
+    if [ "$file" != "$branch/*" ]
+    then
+        cp "$file" .
+    fi
+done
+
+# if [ "$branch" = 'master' ]
+# then
+#     branch=".pushy/commit"
+#     for file in *
+#     do
+#         if [ "$filename" = "*" ]
+#         then
+#             continue
+#         fi
+
+#         if [-e "$branch"]  
+#     done
+# else
+#     branch=".pushy/branch/$branch"
+#     for file in *
+#     do
+#         filename=$(basename "$file")
+#         if [ "$filename" = "*" ]
+#         then
+#             continue
+#         fi
+#         if [ -e "$branch/$filename" ]
+#         then
+#             if [ -z "$(diff "$file" ".pushy/commit/$file")" ]
+#             then
+#                 continue
+#             fi
+
+#             # diff_change=$(diff "$branch/$filename" "$file" | head -n 1 | grep -E 'a')
+#             if [ -n "$(diff "$branch/$filename" "$file" | head -n 1 | grep -E 'a')" ]
+#             then
+#                 # echo "either no difference or append new content"
+#                 if [ "$branch" = 'pushy/commit' ]
+#                 then 
+#                     branch='.'
+#                 fi
+#                 cp "$file" "$branch/"
+#             else
+#                 #should return error , have conflict
+#                 # diff "$file" "$branch/$filename"
+#                 # echo "why"
+#                 :
+#             fi
+#         else
+#             # echo "delete $file"
+#             rm "$file"
+#         fi
+#     done
+
+#     for file in "$branch/"*
+#     do
+#         if [ "$file" != "$branch/*" ]
+#         then
+#             cp "$file" .
+#         fi
+#     done
+# fi
+
+
+
+# for file in "$branch/"*
+# do
+#     filename=$(basename "$file")
+#     if [ "$file" != "$branch/*" ]
+#     then
+#         if [ -e "" ]
+#     fi
+# done
+
+
+# branch_folder=".pushy/commit"
+# for file in "$branch_folder/"*
+# do
+    # if [ "$file" != "$branch_folder/*" ]
+    # then
+    #     cp "$file" .
+    # fi
+# done
+
+# if [ "$branch" != 'master' ]
+# then
+#     branch_folder=".pushy/branch/$branch"
+#     for file in "$branch_folder/"*
+#     do
+#         if [ "$file" != "$branch_folder/*" ]
+#         then
+#             cp "$file" .
+#         fi
+#     done
+# fi
