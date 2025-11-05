@@ -1,0 +1,60 @@
+#!/bin/dash
+
+#check if pushy is initialized
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-show: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+#check correct input
+if [ "$#" -ne 1 ]
+then
+    echo "usage: pushy-show <commit>:<filename>"
+    exit 1
+fi
+
+if [ -z "$(echo "$1" | grep -E ":")" ]
+then
+    echo "usage: pushy-show <commit>:<filename>"
+    exit
+fi
+
+# check if [commit] is omitted
+first_char=$(echo "$1" | cut -c1)
+
+# get the directory name and file name
+if [ "$first_char" = ':' ]
+then
+    directory="index"
+    file=$(echo "$1" | cut -c2-)
+else
+    directory=$(echo "$1" | cut -d':' -f1)
+    file=$(echo "$1" | cut -d':' -f2)
+fi
+
+# check if <commit> directory exists
+if [ ! -e ".pushy/$directory" ]
+then
+    echo "pushy-show: error: unknown commit '$directory'"
+    exit 1
+fi
+
+# cat file content if file exists
+file_with_path=.pushy/"$directory"/"$file"
+if [ -e ".pushy/$directory/$file" ]
+then 
+    cat "$file_with_path"
+# if file does not exist
+else
+    # directory is index
+    if [ "$directory" = 'index' ]
+    then
+        echo "pushy-show: error: '$file' not found in index"
+        exit 1
+    # directory is <commit>
+    else
+        echo "pushy-show: error: '$file' not found in commit $directory"
+        exit 1
+    fi
+fi

@@ -1,0 +1,36 @@
+#!/bin/dash
+
+if [ "$#" -ne 0 ]
+then
+    echo "usage: pushy-init"
+    exit 1
+fi
+
+pushy_folder=".pushy"
+
+if [ -e "$pushy_folder" ]
+then
+    echo "pushy-init: error: .pushy already exists"
+    exit 1
+fi
+
+echo "Initialized empty pushy repository in .pushy"
+mkdir "$pushy_folder"
+
+# Create index folder when pushy-add, commit folder when pushy-commit
+mkdir "$pushy_folder/index"
+# Create commit folder when pushy-commit, files from index folder sav in commit folder
+mkdir "$pushy_folder/commit"
+mkdir "$pushy_folder/branch"
+mkdir "$pushy_folder/branch/master"
+
+# Create log to record all log, commit_msg for current log message
+touch "$pushy_folder/log"
+# Initial the first commit index be 0, will be use in pushy-commit
+echo "0" > "$pushy_folder/commit_msg"
+# Create a file to track all files status
+touch "$pushy_folder/status"
+# branches_list to save exist branches
+echo "master" > "$pushy_folder/branches_list"
+# current_branch file record current branch, will switch if run pushy-checkout
+echo "master" > "$pushy_folder/current_branch" 

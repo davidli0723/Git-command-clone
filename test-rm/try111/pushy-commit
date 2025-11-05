@@ -1,0 +1,167 @@
+#!/bin/dash
+
+#check if pushy is initialized
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-commit: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+#check correct input
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]
+then
+    echo "usage: pushy-commit [-a] -m commit-message"
+    exit 1
+fi
+
+if [ "$#" -eq 2 ]
+then
+    msg="$2"
+    if [ "$1" != '-m' ]
+    then
+        echo "usage: pushy-commit [-a] -m commit-message"
+        exit 1
+    fi
+elif [ "$#" -eq 3 ]
+then
+    msg="$3"
+    if [ "$1" != '-a' ] || [ "$2" != '-m' ]
+    then
+        echo "usage: pushy-commit [-a] -m commit-message"
+        exit 1
+    fi
+fi
+
+# initalize change flag be false
+change=false
+
+# when pushy-commit -a -m message input, handle -a situation, working directory to index directory
+if [ "$1" = '-a' ]
+then
+    for index_file in ".pushy/index/"*
+    do
+        file=$(basename "$index_file")
+        if [ "$file" = "*" ]
+        then
+            continue
+        fi
+        # if file in working directory
+        if [ -e "$file" ]
+        then
+            # if file exist in both working directory and index directory, and the file content is different
+            # copy file from working directory to index directory
+            if [ -n "$(diff "$index_file" "$file")" ]
+            then
+                change=true
+                cp "$file" "$index_file"
+            fi
+        # if file not in working directory, remove from index directory
+        else
+            rm "$index_file"
+        fi
+    done
+fi
+
+# handle files from index directory to commit directory
+for index_file in ".pushy/index/"*
+do
+    file=$(basename "$index_file")
+    if [ "$file" = "*" ]
+    then
+        continue
+    fi
+    commit_file=".pushy/commit/$file"
+
+    # if file exist in both index and commit directory, doing copy stuff
+    if [ -e "$commit_file" ]
+    then
+        # if there is difference in content
+        # copy file to commit directory
+        if [ -n "$(diff "$index_file" "$commit_file")" ]
+        then
+            change=true
+            cp "$index_file" "$commit_file"
+        fi
+    # if file exist in index directory but not commit directory
+    # copy file to commit directory
+    else
+        change=true
+        cp "$index_file" "$commit_file"
+    fi
+done
+
+
+# handle files from commit directory to index directory, doing remove stuff
+for commit_file in ".pushy/commit/"*
+do
+    file=$(basename "$commit_file")
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    # if file exist in commit directory but not index directory, remove file in commit directory
+    if [ ! -e ".pushy/index/$file" ]
+    then
+        change=true
+        rm "$commit_file"
+    fi
+done
+
+
+# if change flag is true
+if [ "$change" = true ]
+then
+    # get current commit number from commit_msg
+    log_index=$(cat ".pushy/commit_msg")
+
+    #create current commit number folder and put all files in commit folder to commit number folder
+    mkdir ".pushy/$log_index"
+    if [ -n "$(ls ".pushy/index/")" ]
+    then
+        for file in ".pushy/index/"*
+        do
+            filename=$(basename "$file")
+            if [ "$file" != '*' ]
+            then
+                cp "$file" ".pushy/$log_index/$filename"
+            fi
+        done
+    fi
+
+    # write log message into log
+    if [ "$log_index" -eq 0 ]
+    then
+        commit_msg="$log_index $msg"
+    else
+        commit_msg="$log_index $msg\n"
+    fi
+
+    echo "$commit_msg$(cat .pushy/log)" > .pushy/log 
+
+    echo "Committed as commit $log_index"
+
+    # update the the commit number in commit_msg
+    log_index=$((log_index+1))
+    echo "$log_index" > ".pushy/commit_msg"
+
+# if change flag remains false
+else
+    echo "nothing to commit"
+fi
+
+current_branch_folder="$(cat ".pushy/current_branch")"
+current_branch_folder=".pushy/branch/$current_branch_folder"
+
+if [ "$change" = true ]
+then
+    for file in ".pushy/commit/"*
+    do
+        if [ "$file" != ".pushy/commit/*" ]
+        then
+            cp "$file" "$current_branch_folder"
+        fi
+        # echo "$file"
+        # echo "$current_branch_folder"
+        # cp "$file" "$current_branch_folder"
+    done
+fi

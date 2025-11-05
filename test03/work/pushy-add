@@ -1,0 +1,40 @@
+#!/bin/dash
+
+pushy_folder=".pushy"
+
+#check if pushy is initialized
+if [ ! -d "$pushy_folder" ] 
+then
+    echo "pushy-add: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+#check correct input
+if [ $# -eq 0 ]
+then
+    echo "usage: pushy-add <filenames>"
+    exit 1
+fi
+
+#check if there is any non exist file
+for file in "$@"
+do
+    if [ ! -e "$file" ]
+    then
+        echo "usage: error: can not open '$file'"
+        exit 1
+    fi
+done
+
+for file in "$@"
+do
+    # add file if it exists in working directory
+    if [ -e "$file" ]
+    then
+        cp "$file" "$pushy_folder/index/"
+    # remove file in index directory if it does not exists in working directory but exists in index directory
+    elif [ ! -e "$file" ] && [ -e ".pushy/index/$file" ]
+    then
+        rm ".pushy/index/$file"
+    fi
+done

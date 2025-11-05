@@ -1,0 +1,143 @@
+#!/bin/dash
+
+# check if pushy is initialized
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-rm: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# check correct input
+if [ "$#" -eq 0 ]
+then
+    echo "usage: $0 [--force] [--cached] <filenames>"
+    exit 1
+fi
+
+# check if --force or --cached exist in the command
+force_flag=false
+cached_flag=false
+
+if [ "$1" = '--force' ]
+then
+    force_flag=true
+    shift
+fi
+
+if [ "$1" = '--cached' ]
+then
+    cached_flag=true
+    shift
+fi
+
+index_path=".pushy/index"
+
+# check if any file is not in index directory
+for file in "$@"
+do 
+    if [ ! -e "$index_path/$file" ]
+    then 
+        echo "$0: error: '$file' is not in the pushy repository"
+        exit 1
+    fi
+done
+
+# if force flag is true and cached flag is false, delete files in both working directory and index directory without potential error message and exit program
+if [ "$force_flag" = true ] && [ "$cached_flag" = false ]
+then
+    for file in "$@"
+    do
+        if [ -e "$file" ]
+        then
+            rm "$file"
+        fi
+        rm "$index_path/$file"
+    done
+    exit 0
+fi
+
+# if force flag is true, delete files without potential error message and exit program
+if [ "$force_flag" = true ] && [ "$cached_flag" = true ]
+then
+    for file in "$@"
+    do
+        rm "$index_path/$file"
+    done
+    exit 0
+fi
+
+if [ ! -d ".pushy/0" ]
+then
+    for file in "$@"
+    do
+        if [ "$cached_flag" = false ] && [ -e "$file" ]
+        then
+            rm "$file"
+        fi
+        
+        rm "$index_path/$file"
+    done
+    exit 0
+fi
+
+# check possible error
+for file in "$@"
+do
+    # if cached flag is false, file will delete from working directory and index directory
+    if [ "$cached_flag" = false ]
+    then
+        # error 1: file has staged changes in the index
+        # situation 1: file in index directory but not commit directory
+        # situation 2: 
+        
+        if { [ -e "$index_path/$file" ] && [ ! -e ".pushy/commit/$file" ]; } || { [ -n "$(diff "$index_path/$file" ".pushy/commit/$file")" ] && [ -z "$(diff "$index_path/$file" "$file")" ]; }
+        then
+            echo "$0: error: '$file' has staged changes in the index"
+            exit 1
+        fi
+
+        if [ -n "$(diff "$index_path/$file" ".pushy/commit/$file")" ] && [ -n "$(diff "$index_path/$file" "$file")" ]
+        then
+            echo "$0: error: '$file' in index is different to both the working file and the repository"
+            exit 1
+        fi
+
+        if [ -n "$(diff "$file" ".pushy/commit/$file")" ]
+        then
+            echo "$0: error: '$file' in the repository is different to the working file"
+            exit 1
+        fi
+    fi  
+
+    if [ -e ".pushy/commit/$file" ]
+    then
+        if [ -n "$(diff "$index_path/$file" ".pushy/commit/$file")" ] && [ -n "$(diff "$index_path/$file" "$file")" ]
+        then
+            echo "$0: error: '$file' in index is different to both the working file and the repository"
+            exit 1
+        fi
+    fi    
+done
+
+
+for file in "$@"
+do
+    if [ "$cached_flag" = false ] && [ -e "$file" ]
+    then
+        rm "$file"
+    fi
+
+    rm "$index_path/$file"
+
+done
+
+
+# if [ "$#" -ge 2 ]
+# then
+#     if [ "$1" != '--force' ] || [ "$1" != '--cached' ]
+#     then
+#         echo "usage: $0 [--force] [--cached] <filenames>"
+#         exit 1
+#     fi
+# fi
+

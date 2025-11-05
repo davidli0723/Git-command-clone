@@ -1,0 +1,158 @@
+#!/bin/dash
+
+#check if pushy is initialized
+if [ ! -d ".pushy" ] 
+then
+    echo "pushy-commit: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+#check correct input
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]
+then
+    echo "usage: pushy-commit [-a] -m commit-message"
+    exit 1
+fi
+
+if [ "$#" -eq 2 ]
+then
+    msg="$2"
+    if [ "$1" != '-m' ]
+    then
+        echo "usage: pushy-commit [-a] -m commit-message"
+        exit 1
+    fi
+elif [ "$#" -eq 3 ]
+then
+    msg="$3"
+    if [ "$1" != '-a' ] || [ "$2" != '-m' ]
+    then
+        echo "usage: pushy-commit [-a] -m commit-message"
+        exit 1
+    fi
+fi
+
+
+change=false
+
+# case if pushy-commit -a -m message is entered
+if [ "$#" -eq 3 ]
+then
+    # echo "3"
+    for index_file in ".pushy/index/"*
+    do
+        file=$(basename "$index_file")
+        if [ -e "$file" ]
+        then
+            if [ -n "$(diff "$index_file" "$file")" ]
+            then
+                change=true
+                cp "$file" "$index_file"
+            fi
+            if [ ! -e "./pushy/commit/$file" ]
+            then
+                change=true
+                cp "$file" ".pushy/commit/$file"
+            # elif [ -n "$(diff "$index_file" "./pushy/commit/$file")" ]
+            # then
+            #     change=true
+            #     cp "$index_file" "./pushy/commit/$file"
+            fi
+        fi
+    done
+fi
+
+# if pushy-commit -m message
+if [ "$#" -eq 2 ]
+then
+    # echo "2"
+    if [ -n "$(ls ".pushy/index/")" ]
+    then
+        for index_file in ".pushy/index/"*
+        do
+            file=$(basename "$index_file")
+            commit_file=".pushy/commit/$file"
+            if [ -e "$commit_file" ]
+            then
+                # echo "file exist in both folder"
+                if [ -n "$(diff "$index_file" "$commit_file")" ]
+                then
+                    # echo "files not the same"
+                    change=true
+                    cp "$index_file" "$commit_file"
+                fi
+            else
+                # echo "file '$index_file' does not exist in commit folder"
+                change=true
+                cp "$index_file" "$commit_file"
+            fi
+        done
+    fi
+fi
+
+for commit_file in ".pushy/commit/"*
+do
+    file=$(basename "$commit_file")
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    if [ ! -e ".pushy/index/$file" ]
+    then
+        change=true
+        rm "$commit_file"
+    fi
+done
+
+if [ "$change" = true ]
+then
+    # echo "copy files to commit folder"
+    log_index=$(cat ".pushy/commit_msg")
+    # rm ".pushy/commit/"*
+
+    mkdir ".pushy/$log_index"
+    if [ -n "$(ls ".pushy/index/")" ]
+    then
+        for file in ".pushy/index/"*
+        do
+            filename=$(basename "$file")
+            if [ "$file" != '*' ]
+            then
+                cp "$file" ".pushy/$log_index/$filename"
+            fi
+        done
+    fi
+
+    if [ "$log_index" -eq 0 ]
+    then
+        commit_msg="$log_index $msg"
+    else
+        commit_msg="$log_index $msg\n"
+    fi
+
+    echo "$commit_msg$(cat .pushy/log)" > .pushy/log 
+
+    echo "Committed as commit $log_index"
+
+    log_index=$((log_index+1))
+    echo "$log_index" > ".pushy/commit_msg"
+else
+    echo "nothing to commit"
+fi
+
+current_branch_folder="$(cat ".pushy/current_branch")"
+current_branch_folder=".pushy/branch/$current_branch_folder"
+
+if [ "$change" = true ]
+then
+    for file in ".pushy/commit/"*
+    do
+        if [ "$file" != ".pushy/commit/*" ]
+        then
+            cp "$file" "$current_branch_folder"
+        fi
+        # echo "$file"
+        # echo "$current_branch_folder"
+        # cp "$file" "$current_branch_folder"
+    done
+fi

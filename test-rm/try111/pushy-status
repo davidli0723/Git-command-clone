@@ -1,0 +1,156 @@
+#!/bin/dash
+
+filename=""
+
+for file in *
+do
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    filename="$file\n$filename"
+    # echo "file: $file"
+done
+
+for file in ".pushy/index/"*
+do
+    file=$(echo "$file" | cut -d'/' -f3)
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    filename="$file\n$filename"
+    # echo "file_idx: $file"
+done
+
+for file in ".pushy/commit/"*
+do
+    file=$(echo "$file" | cut -d'/' -f3)
+    if [ "$file" = '*' ]
+    then
+        continue
+    fi
+    filename="$file\n$filename"
+    # echo "file_commit: $file"
+done
+
+filename=$(echo "$filename" | sort | uniq | tail -n +2)
+
+if [ "$filename" = '' ]
+then
+    exit 0
+fi
+
+echo "$filename" | while IFS= read -r file
+do
+    if [ -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        echo "$file - deleted from index"
+        continue
+    fi
+
+    if [ -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+    then
+        echo "$file - untracked"
+        continue
+    fi
+
+    if [ -e "$file" ] && [ -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+    then
+        if [ -n "$(diff "$file" ".pushy/index/$file")" ]
+        then
+            echo "$file - added to index, file changed"
+        else
+            echo "$file - added to index"
+        fi
+        continue
+    fi
+
+    if [ ! -e "$file" ] && [ -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+    then
+        echo "$file - added to index, file deleted"
+        continue
+    fi
+
+    if [ ! -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        echo "$file - file deleted, deleted from index"
+        continue
+    fi
+
+    if [ ! -e "$file" ] && [ -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        echo "$file - file deleted"
+        continue
+    fi
+
+
+    if [ -e "$file" ] && [ -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+    then
+        if [ -z "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -z "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - same as repo"
+            # echo "index"
+            # cat ".pushy/index/$file"
+            # echo "commit"
+            # cat ".pushy/commit/$file"
+            # cat "$file"
+            continue
+        fi
+
+        if [ -n "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -z "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - file changed, changes staged for commit"
+            continue
+        fi
+
+        if [ -n "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -n "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - file changed, different changes staged for commit"
+            continue
+        fi
+
+        if [ -z "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -n "$(diff ".pushy/index/$file" "$file")" ]
+        then
+            echo "$file - file changed, changes not staged for commit"
+            continue
+        fi
+    fi
+
+    
+done
+
+
+# for file in *
+# do
+#     if [ -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+#     then
+#         echo "$file - deleted from index"
+#         continue
+#     fi
+
+#     if [ -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+#     then
+#         echo "$file - untracked"
+#         continue
+#     fi
+
+#     if [ -e "$file" ] && [ -e ".pushy/index/$file" ] && [ ! -e ".pushy/commit/$file" ]
+#     then
+#         echo "$file - added to index"
+#         continue
+#     fi
+
+#     if [ ! -e "$file" ] && [ ! -e ".pushy/index/$file" ] && [ -e ".pushy/commit/$file" ]
+#     then
+#         echo "$file - file deleted, deleted from index"
+#         continue
+#     fi
+
+#     if [ -z "$(diff ".pushy/index/$file" ".pushy/commit/$file")" ] && [ -z "$(diff ".pushy/index/$file" "$file")" ]
+#     then
+#         echo "$file - same as repo"
+#         continue
+#     fi
+
+# done
