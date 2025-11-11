@@ -15,3 +15,4 @@ Test cases are written to validate the correctness of the implementation.
 --cached option is specified, the file is removed only from the index, and not from the current directory.
 --force option overrides this, and will carry out the removal even if the user will lose work.
 - pushy-status: shows the status of files in the current directory, the index, and the repository.
+restructure the format 
