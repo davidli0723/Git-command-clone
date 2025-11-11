@@ -5,7 +5,7 @@ Test cases are included to validate the correctness of each implemented feature.
 
 ---
 
-## 🧰 Available Commands
+## Available Commands
 
 ### **1. `pushy-init`**
 Creates an empty Pushy repository.
